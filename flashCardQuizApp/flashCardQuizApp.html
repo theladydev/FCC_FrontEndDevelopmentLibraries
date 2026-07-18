@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Flashcard App Preview</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #f4f1ea;
+    color: #222;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px;
+  }
+
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  #card-counter { color: #666; font-size: 0.9rem; margin-bottom: 24px; }
+
+  .scene {
+    width: 340px;
+    height: 220px;
+    perspective: 1000px;
+    margin-bottom: 20px;
+  }
+
+  #flashcard {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.4s ease;
+    cursor: pointer;
+  }
+
+  #flashcard.flipped {
+    transform: rotateY(180deg);
+  }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  }
+
+  #card-front {
+    background: #fff;
+    border: 1px solid #ddd;
+  }
+
+  #card-back {
+    background: #2d6a4f;
+    color: #fff;
+    transform: rotateY(180deg);
+  }
+
+  .hint {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 28px;
+  }
+
+  #delete-btn {
+    background: #c0392b;
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-bottom: 36px;
+  }
+  #delete-btn:hover { background: #a8311f; }
+
+  form#entry-form {
+    width: 340px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  form#entry-form h2 {
+    font-size: 1rem;
+    margin: 0 0 14px;
+  }
+
+  textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 50px;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.9rem;
+  }
+
+  button[type="submit"] {
+    background: #1e7e34;
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  button[type="submit"]:hover { background: #176529; }
+
+  #form-feedback {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    min-height: 1.2em;
+  }
+
+  .error-message { color: #c0392b; }
+</style>
+</head>
+<body>
+
+<h1>Flashcards</h1>
+<span id="card-counter"></span>
+
+<div class="scene">
+  <div id="flashcard">
+    <div id="card-front" class="card-face"></div>
+    <div id="card-back" class="card-face"></div>
+  </div>
+</div>
+<div class="hint">click the card to flip it</div>
+
+<button id="delete-btn">Delete current card</button>
+
+<form id="entry-form">
+  <h2>Add a new card</h2>
+  <textarea id="front-text" placeholder="Question"></textarea>
+  <textarea id="back-text" placeholder="Answer"></textarea>
+  <button type="submit">Add card</button>
+  <div id="form-feedback"></div>
+</form>
+
+<script>
+// ---- Compiled from the TypeScript logic (types stripped) ----
+
+class InvalidUserInputError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'InvalidUserInputError';
+  }
+}
+
+let currentCards = [
+  { questionText: 'What is the capital of France?', questionAnswer: 'Paris' },
+  { questionText: 'What is 5 + 3?', questionAnswer: '8' },
+  { questionText: 'Who wrote "Hamlet"?', questionAnswer: 'Shakespeare' }
+];
+
+let currentIndex = 0;
+
+const flashcardEl = document.getElementById('flashcard');
+const frontEl = document.getElementById('card-front');
+const backEl = document.getElementById('card-back');
+const deleteBtn = document.getElementById('delete-btn');
+const entryForm = document.getElementById('entry-form');
+const frontText = document.getElementById('front-text');
+const backText = document.getElementById('back-text');
+const counterEl = document.getElementById('card-counter');
+const feedbackEl = document.getElementById('form-feedback');
+
+function updateCardDisplay() {
+  if (currentCards.length === 0) {
+    frontEl.innerHTML = '<span>✨ empty</span>';
+    backEl.innerHTML = '<span>add a card</span>';
+    counterEl.textContent = '0 cards';
+    flashcardEl.classList.remove('flipped');
+    return;
+  }
+
+  if (currentIndex >= currentCards.length) {
+    currentIndex = currentCards.length - 1;
+  }
+  if (currentIndex < 0) {
+    currentIndex = 0;
+  }
+
+  const card = currentCards[currentIndex];
+  if (card) {
+    frontEl.innerHTML = `<span>${card.questionText}</span>`;
+    backEl.innerHTML = `<span>${card.questionAnswer}</span>`;
+  }
+
+  counterEl.textContent = `${currentCards.length} card${currentCards.length !== 1 ? 's' : ''}`;
+}
+
+function deleteCurrentCard() {
+  if (currentCards.length === 0) {
+    return;
+  }
+
+  currentCards.splice(currentIndex, 1);
+
+  if (currentCards.length === 0) {
+    currentIndex = 0;
+  } else if (currentIndex > 0) {
+    currentIndex = currentIndex - 1;
+  } else {
+    currentIndex = 0;
+  }
+
+  updateCardDisplay();
+  flashcardEl.classList.remove('flipped');
+}
+
+function handleAddCard(e) {
+  e.preventDefault();
+
+  const question = frontText.value.trim();
+  const answer = backText.value.trim();
+
+  feedbackEl.innerHTML = '';
+
+  if (!question || !answer) {
+    const err = new InvalidUserInputError('Both question and answer are required.');
+    feedbackEl.innerHTML = `<span class="error-message">⚠️ ${err.message}</span>`;
+    throw err;
+  }
+
+  const newCard = {
+    questionText: question,
+    questionAnswer: answer
+  };
+
+  currentCards.push(newCard);
+  currentIndex = currentCards.length - 1;
+
+  updateCardDisplay();
+  flashcardEl.classList.remove('flipped');
+
+  frontText.value = '';
+  backText.value = '';
+  feedbackEl.innerHTML = '<span style="color: #1e7e34;">✓ card added</span>';
+}
+
+let isFlipped = false;
+flashcardEl.addEventListener('click', function () {
+  isFlipped = !isFlipped;
+  this.classList.toggle('flipped', isFlipped);
+});
+
+deleteBtn.addEventListener('click', deleteCurrentCard);
+
+entryForm.addEventListener('submit', handleAddCard);
+
+if (currentCards.length > 0) {
+  currentIndex = 0;
+}
+updateCardDisplay();
+flashcardEl.classList.remove('flipped');
+</script>
+
+</body>
+</html>
