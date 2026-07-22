@@ -1,4 +1,4 @@
-# Frontend Development and libraries Projects
+# Frontend Development and libraries Projects - FreeCodeCamp
 This repository contains frontend projects I built while learning Front-end Development.
 
 ## Projects
